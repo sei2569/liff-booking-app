@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>จองห้องประชุมบริษัท</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        body { font-family: 'Kanit', sans-serif; background-color: #f4f6f9; padding: 20px; }
+        .container { max-width: 400px; margin: 0 auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #333; margin-bottom: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background-color: #06C755; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        .loader { display: none; text-align: center; margin-top: 10px; color: #666; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>จองห้องประชุม</h2>
+    <form id="bookingForm">
+        <div class="form-group">
+            <label for="date">วันที่ต้องการจอง</label>
+            <input type="date" id="date" required>
+        </div>
+        <div class="form-group">
+            <label for="time">เวลา</label>
+            <input type="time" id="time" required>
+        </div>
+        <div class="form-group">
+            <label for="name">ชื่อ-นามสกุล</label>
+            <input type="text" id="name" placeholder="ระบุชื่อ-นามสกุล" required>
+        </div>
+        <div class="form-group">
+            <label for="empId">รหัสพนักงาน</label>
+            <input type="text" id="empId" placeholder="เช่น EMP001" required>
+        </div>
+        <div class="form-group">
+            <label for="room">เลือกห้องประชุม</label>
+            <select id="room" required>
+                <option value="" disabled selected>-- กรุณาเลือกห้อง --</option>
+                <option value="Brooklyn">Brooklyn</option>
+                <option value="Manhattan">Manhattan</option>
+                <option value="Queens">Queens</option>
+                <option value="Staten Island">Staten Island</option>
+                <option value="Bronx">Bronx</option>
+            </select>
+        </div>
+        <button type="submit" id="submitBtn">ยืนยันการจอง</button>
+        <div class="loader" id="loader">กำลังบันทึกข้อมูล...</div>
+    </form>
+</div>
+
+<script>
+    // 1. ใส่ LIFF ID ที่ได้จาก LINE Developers
+    const LIFF_ID = "ใส่_LIFF_ID_ของคุณที่นี่";
+    // 2. ใส่ Web App URL ที่ได้จาก Google Apps Script
+    const GAS_URL = "ใส่_WEB_APP_URL_จาก_GAS_ที่นี่";
+
+    // เริ่มต้นทำงาน LIFF
+    async function initializeLiff() {
+        try {
+            await liff.init({ liffId: LIFF_ID });
+            // ถ้าอยากดึงชื่อ LINE อัตโนมัติ สามารถใช้ liff.getProfile() ตรงนี้ได้
+        } catch (err) {
+            console.error("LIFF Initialization failed", err);
+        }
+    }
+    initializeLiff();
+
+    // จัดการเมื่อกดปุ่ม Submit ฟอร์ม
+    document.getElementById('bookingForm').addEventListener('submit', function(e) {
+        e.preventDefault(); // ป้องกันเว็บโหลดใหม่
+        
+        const submitBtn = document.getElementById('submitBtn');
+        const loader = document.getElementById('loader');
+        
+        // ล็อกปุ่มและโชว์สถานะโหลด
+        submitBtn.disabled = true;
+        loader.style.display = 'block';
+
+        // ดึงข้อมูลจากฟอร์ม
+        const payload = {
+            date: document.getElementById('date').value,
+            time: document.getElementById('time').value,
+            name: document.getElementById('name').value,
+            empId: document.getElementById('empId').value,
+            room: document.getElementById('room').value
+        };
+
+        // ส่งข้อมูลไปที่ Google Apps Script
+        fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.status === 'success') {
+                alert('จองห้องประชุมสำเร็จ!');
+                // ปิดหน้าจอ LIFF ทันทีที่จองเสร็จ
+                if (liff.isInClient()) {
+                    liff.closeWindow();
+                } else {
+                    window.location.reload();
+                }
+            } else {
+                alert('เกิดข้อผิดพลาด: ' + data.message);
+                submitBtn.disabled = false;
+                loader.style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('ไม่สามารถเชื่อมต่อระบบได้');
+            submitBtn.disabled = false;
+            loader.style.display = 'none';
+        });
+    });
+</script>
+
+</body>
+</html>
